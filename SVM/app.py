@@ -1,90 +1,76 @@
 from flask import Flask, request, jsonify
 import joblib
 import numpy as np
-import requests
-import tempfile
-import os
 
-app = Flask(_name_)
+app = Flask(__name__)
 
 # ===============================
-# 1. Download model dari Google Drive
+# 1. Load model & scaler (langsung dari folder)
 # ===============================
-MODEL_URL = "https://drive.google.com/uc?id=1Gjoja0smtWN2B9gR0x0ZAmfQO_lJo_SW"
-SCALER_URL = "https://drive.google.com/uc?id=1Gg3bSRdffy03UH5VyTLJjao74w8G54YG"
+MODEL_PATH = "svm_model_rbf.pkl"
+SCALER_PATH = "scaler.pkl"
 
-def download_file(url, filename):
-    r = requests.get(url)
-    with open(filename, "wb") as f:
-        f.write(r.content)
-
-# Temp directory untuk file model
-model_path = os.path.join(tempfile.gettempdir(), "svm_model.pkl")
-scaler_path = os.path.join(tempfile.gettempdir(), "scaler.pkl")
-
-if not os.path.exists(model_path):
-    download_file(MODEL_URL, model_path)
-if not os.path.exists(scaler_path):
-    download_file(SCALER_URL, scaler_path)
+model = joblib.load(MODEL_PATH)
+scaler = joblib.load(SCALER_PATH)
 
 # ===============================
-# 2. Load model & scaler
+# 2. Helper parsing
 # ===============================
-model = joblib.load(model_path)
-scaler = joblib.load(scaler_path)
-
-# ===============================
-# 3. Helper parsing
-# ===============================
-def parse_bp(blood_pressure):
-    """Format input '120/80' → 120, 80"""
+def parse_bp(bp):
+    """Format input '120/80' → (120, 80)"""
+    if not bp or "/" not in bp:
+        return 0.0, 0.0
     try:
-        s, d = blood_pressure.split('/')
+        s, d = bp.split("/")
         return float(s), float(d)
     except:
-        return 0, 0
+        return 0.0, 0.0
+
 
 def parse_glucose(glucose):
-    """Format '150a' → 150 | '200b' → 200"""
+    """Format '150a' → 150, '200b' → 200"""
     try:
-        num = ''.join([c for c in glucose if c.isdigit()])
+        num = "".join([c for c in str(glucose) if c.isdigit()])
         return float(num)
     except:
-        return 0
+        return 0.0
 
 
 # ===============================
-# 4. Endpoint Prediksi
+# 3. Endpoint Prediksi
 # ===============================
 @app.route("/predict_svm", methods=["POST"])
 def predict_svm():
-    data = request.get_json()
+    try:
+        data = request.get_json()
 
-    # Ambil & parsing data
-    gender = 1 if data["gender"].lower() == "laki-laki" else 0
-    age = float(data["age"])
-    hr = float(data["heart_rate"])
-    spo2 = float(data["spo2"])
-    temp = float(data["temperature"])
-    glucose = parse_glucose(data["glucose"])
-    sistol, diastol = parse_bp(data["blood_pressure"])
+        gender = data.get("gender", "").lower()
+        gender_num = 1 if gender == "laki-laki" else 0
 
-    # Susun array fitur
-    X = np.array([[gender, age, glucose, sistol, diastol, spo2, temp, hr]])
+        age = float(data.get("age", 0))
+        hr = float(data.get("heart_rate", 0))
+        spo2 = float(data.get("spo2", 0))
+        temp = float(data.get("temperature", 0))
 
-    # Scale fitur
-    X_scaled = scaler.transform(X)
+        glucose = parse_glucose(data.get("glucose", "0"))
+        sistol, diastol = parse_bp(data.get("blood_pressure", "0/0"))
 
-    # Prediksi
-    pred = model.predict(X_scaled)[0]
+        X = np.array([[gender_num, age, glucose, sistol, diastol,
+                       spo2, temp, hr]])
 
-    return jsonify({"risk": pred})
+        X_scaled = scaler.transform(X)
+        pred = model.predict(X_scaled)[0]
+
+        return jsonify({"risk": pred})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/", methods=["GET"])
 def home():
-    return "SVM Backend Running!"
+    return "SVM Backend Ready!"
 
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
