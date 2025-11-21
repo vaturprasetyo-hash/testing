@@ -1,8 +1,8 @@
-from flask import Flask, request, jsonify
+from flask import flask, request, jsonify
 import joblib
 import numpy as np
 
-app = Flask(__name__)
+app = flask(__name__)
 
 # ===============================
 # 1. Load model & scaler (langsung dari folder)
