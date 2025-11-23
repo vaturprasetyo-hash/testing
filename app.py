@@ -4,6 +4,7 @@ import joblib
 import numpy as np
 
 app = Flask(__name__)
+CORS(app)   # 🔥 Izinkan semua domain mengakses API ini
 
 # =====================================================
 # 1. Load Model & Scaler
@@ -14,12 +15,10 @@ SCALER_PATH = "scaler.pkl"
 model = joblib.load(MODEL_PATH)
 scaler = joblib.load(SCALER_PATH)
 
-
 # =====================================================
 # 2. Helper Function
 # =====================================================
 def parse_bp(bp):
-    """Parse '120/80' menjadi float sistol & diastol"""
     try:
         if not bp or "/" not in bp:
             return 0.0, 0.0
@@ -30,17 +29,11 @@ def parse_bp(bp):
 
 
 def parse_glucose(glucose):
-    """
-    Format yang diterima:
-        '150a', '200b', '160' (default = a)
-    Output:
-        nilai glucose, tipe (1=puasa, 2=2jam PP)
-    """
     s = str(glucose).strip().lower()
     if s == "" or s == "nan":
-        return 0.0, 1  # default puasa
+        return 0.0, 1
 
-    tipe = 1  # default 'a'
+    tipe = 1
     if s[-1] in ["a", "b"]:
         tipe = 1 if s[-1] == "a" else 2
         s = s[:-1]
@@ -52,7 +45,6 @@ def parse_glucose(glucose):
 
     return val, tipe
 
-
 # =====================================================
 # 3. Endpoint Prediksi
 # =====================================================
@@ -61,7 +53,6 @@ def predict_svm():
     try:
         data = request.get_json()
 
-        # -------------- Extract data --------------
         gender = data.get("gender", "").lower()
         gender_num = 1 if gender == "laki-laki" else 0
 
@@ -75,20 +66,9 @@ def predict_svm():
 
         sistol, diastol = parse_bp(data.get("blood_pressure", "0/0"))
 
-        # -------------- Format fitur sesuai training --------------
-        X = np.array([[
-            gender_num,
-            age,
-            glucose_val,
-            glucose_type,   # 1 = puasa, 2 = 2jam PP
-            sistol,
-            diastol,
-            spo2,
-            temp,
-            hr
-        ]])
+        X = np.array([[gender_num, age, glucose_val, glucose_type,
+                       sistol, diastol, spo2, temp, hr]])
 
-        # -------------- Scale & Predict --------------
         X_scaled = scaler.transform(X)
         pred = model.predict(X_scaled)[0]
 
