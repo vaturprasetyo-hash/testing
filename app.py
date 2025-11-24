@@ -4,7 +4,7 @@ import joblib
 import numpy as np
 
 app = Flask(__name__)
-CORS(app)   # Izinkan akses dari semua domain
+CORS(app)
 
 # =====================================================
 # 1. Load Model & Scaler
@@ -15,90 +15,74 @@ SCALER_PATH = "scaler.pkl"
 model = joblib.load(MODEL_PATH)
 scaler = joblib.load(SCALER_PATH)
 
-
 # =====================================================
-# 2. Medical Range (Toleransi Nilai Ekstrem)
+# 2. Medical Range
 # =====================================================
 def clamp(value, lo, hi):
-    """Membatasi nilai agar tetap di rentang medis yang mungkin."""
     try:
         value = float(value)
     except:
         return lo
     return max(lo, min(value, hi))
 
-
-# batas medis realistis
 MEDICAL_LIMITS = {
-    "temp": (33, 42),       # suhu tubuh manusia
-    "spo2": (50, 100),      # saturasi
-    "hr": (30, 200),        # detak jantung
-    "glucose": (40, 500),   # gula darah mg/dL
-    "sistol": (70, 250),    # tekanan darah
+    "temp": (33, 42),
+    "spo2": (50, 100),
+    "hr": (30, 200),
+    "glucose": (40, 500),
+    "sistol": (70, 250),
     "diastol": (40, 150),
 }
-
 
 # =====================================================
 # 3. Helper Functions
 # =====================================================
-def normalize_float(x):
-    """Membulatkan nilai float ke integer, dengan dukungan koma."""
-    try:
-        return round(float(str(x).replace(",", ".")))
-    except:
-        return 0
-
-
 def parse_bp(bp):
-    """Parse tekanan darah + pembulatan + batas medis."""
     try:
         if not bp or "/" not in bp:
-            return 0, 0
+            return 0.0, 0.0
 
         s, d = bp.split("/")
 
         sistol = clamp(float(s.replace(",", ".")), *MEDICAL_LIMITS["sistol"])
         diastol = clamp(float(d.replace(",", ".")), *MEDICAL_LIMITS["diastol"])
 
-        return round(sistol), round(diastol)
+        return float(sistol), float(diastol)
     except:
-        return 0, 0
+        return 0.0, 0.0
 
 
 def parse_glucose(glucose):
     """
-    Mendukung format:
-    - 120a
-    - 150.5a
-    - 180,7b
-    - 200 (default puasa)
+    Latihannya pakai:
+    df2["Gula_Nilai"] = df2["Gula Darah"].str.extract(r"(\d+)").astype(float)
 
-    Ditambah:
-    - batas medis untuk nilai glucose
+    Maka:
+    - ekstrak digit saja
+    - bulatkan
+    - tipe a/b tetap didukung
     """
     s = str(glucose).strip().lower()
     if s == "" or s == "nan":
-        return 0, 1  # default puasa
+        return 0, 1
 
     tipe = 1
     if s[-1] in ["a", "b"]:
         tipe = 1 if s[-1] == "a" else 2
         s = s[:-1]
 
-    s = s.replace(",", ".")  # dukung koma
+    s = s.replace(",", ".")
 
-    try:
-        val = float(s)
-    except:
+    digits = "".join([c for c in s if c.isdigit()])
+    if digits == "":
         val = 0.0
+    else:
+        val = float(digits)
 
-    # batas medis
     val = clamp(val, *MEDICAL_LIMITS["glucose"])
-    val = round(val)
+    val = round(val)  # WAJIB karena model dilatih angka bulat
 
     return val, tipe
-
 
 # =====================================================
 # 4. Endpoint Prediksi
@@ -108,22 +92,22 @@ def predict_svm():
     try:
         data = request.get_json()
 
+        # gender → integer
         gender = data.get("gender", "").lower()
         gender_num = 1 if gender == "laki-laki" else 0
 
-        age = normalize_float(data.get("age", 0))
+        # umur → integer
+        age = int(float(str(data.get("age", 0)).replace(",", ".")))
 
-        # nilai sensor dibulatkan + batas medis
-        hr = clamp(normalize_float(data.get("heart_rate", 0)), *MEDICAL_LIMITS["hr"])
-        spo2 = clamp(normalize_float(data.get("spo2", 0)), *MEDICAL_LIMITS["spo2"])
-        temp = clamp(normalize_float(data.get("temperature", 0)), *MEDICAL_LIMITS["temp"])
+        # nilai sensor
+        hr = clamp(data.get("heart_rate", 0), *MEDICAL_LIMITS["hr"])
+        spo2 = clamp(data.get("spo2", 0), *MEDICAL_LIMITS["spo2"])
+        temp = clamp(data.get("temperature", 0), *MEDICAL_LIMITS["temp"])
 
-        glucose_raw = data.get("glucose", "0")
-        glucose_val, glucose_type = parse_glucose(glucose_raw)
-
+        glucose_val, glucose_type = parse_glucose(data.get("glucose", "0"))
         sistol, diastol = parse_bp(data.get("blood_pressure", "0/0"))
 
-        # Susunan fitur HARUS SAMA dengan model latih
+        # urutan fitur = HARUS sama dengan training!!!
         X = np.array([[
             gender_num,
             age,
@@ -131,9 +115,9 @@ def predict_svm():
             glucose_type,
             sistol,
             diastol,
-            spo2,
-            temp,
-            hr
+            float(spo2),
+            float(temp),
+            float(hr)
         ]])
 
         X_scaled = scaler.transform(X)
@@ -143,7 +127,7 @@ def predict_svm():
             "risk": pred,
             "glucose_value": glucose_val,
             "glucose_type": glucose_type,
-            "msg": "Prediction OK (with medical-range filtering)"
+            "msg": "Prediction OK — aligned with training dataset"
         })
 
     except Exception as e:
@@ -152,7 +136,7 @@ def predict_svm():
 
 @app.route("/", methods=["GET"])
 def home():
-    return "SVM Backend Ready with Medical Filters! 🚀"
+    return "SVM Backend Ready! (Aligned with Training) 🚀"
 
 
 if __name__ == "__main__":
