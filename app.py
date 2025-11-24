@@ -4,7 +4,7 @@ import joblib
 import numpy as np
 
 app = Flask(__name__)
-CORS(app)   # 🔥 Izinkan semua domain mengakses API ini
+CORS(app)   # 🔥 Izinkan akses dari semua domain
 
 # =====================================================
 # 1. Load Model & Scaler
@@ -15,35 +15,63 @@ SCALER_PATH = "scaler.pkl"
 model = joblib.load(MODEL_PATH)
 scaler = joblib.load(SCALER_PATH)
 
+
 # =====================================================
-# 2. Helper Function
+# 2. Helper Functions
 # =====================================================
+
+def normalize_float(x):
+    """Membulatkan nilai float ke integer terdekat."""
+    try:
+        return round(float(str(x).replace(",", ".")))
+    except:
+        return 0
+
+
 def parse_bp(bp):
+    """Parse tekanan darah + pembulatan desimal."""
     try:
         if not bp or "/" not in bp:
-            return 0.0, 0.0
+            return 0, 0
+
         s, d = bp.split("/")
-        return float(s), float(d)
+
+        # ganti koma ke titik lalu float
+        s = float(s.replace(",", "."))
+        d = float(d.replace(",", "."))
+
+        return round(s), round(d)
     except:
-        return 0.0, 0.0
+        return 0, 0
 
 
 def parse_glucose(glucose):
+    """
+    Mendukung format:
+    - 120a
+    - 150.5a
+    - 180,7b
+    - 200 (default puasa)
+    """
     s = str(glucose).strip().lower()
     if s == "" or s == "nan":
-        return 0.0, 1
+        return 0, 1
 
     tipe = 1
     if s[-1] in ["a", "b"]:
         tipe = 1 if s[-1] == "a" else 2
         s = s[:-1]
 
+    s = s.replace(",", ".")  # dukung koma
     try:
-        val = float("".join(c for c in s if c.isdigit()))
+        val = float(s)
     except:
         val = 0.0
 
+    val = round(val)  # model dilatih dengan integer
+
     return val, tipe
+
 
 # =====================================================
 # 3. Endpoint Prediksi
@@ -56,18 +84,28 @@ def predict_svm():
         gender = data.get("gender", "").lower()
         gender_num = 1 if gender == "laki-laki" else 0
 
-        age = float(data.get("age", 0))
-        hr = float(data.get("heart_rate", 0))
-        spo2 = float(data.get("spo2", 0))
-        temp = float(data.get("temperature", 0))
+        age = normalize_float(data.get("age", 0))
+        hr = normalize_float(data.get("heart_rate", 0))
+        spo2 = normalize_float(data.get("spo2", 0))
+        temp = normalize_float(data.get("temperature", 0))
 
         glucose_raw = data.get("glucose", "0")
         glucose_val, glucose_type = parse_glucose(glucose_raw)
 
         sistol, diastol = parse_bp(data.get("blood_pressure", "0/0"))
 
-        X = np.array([[gender_num, age, glucose_val, glucose_type,
-                       sistol, diastol, spo2, temp, hr]])
+        # Susunan fitur HARUS sesuai model latih!!
+        X = np.array([[
+            gender_num,
+            age,
+            glucose_val,
+            glucose_type,
+            sistol,
+            diastol,
+            spo2,
+            temp,
+            hr
+        ]])
 
         X_scaled = scaler.transform(X)
         pred = model.predict(X_scaled)[0]
