@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Data Pasien</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Google Font & Supabase -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: url('img3.png') no-repeat center center fixed;
+      background-size: cover;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+
+header {
+  background: #0072ff;
+  color: white;
+  padding: 15px 25px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  text-align: center;
+  position: relative;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-self: start;
+  margin-left: 0px; /* geser sedikit ke kiri */
+}
+
+.header-left img {
+  width: 65px;
+  height: auto;
+}
+
+.header-text p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+.header-center {
+  justify-self: center;
+}
+
+.header-center h1 {
+  margin: 0px;
+  font-size: 22px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.logout-btn {
+  justify-self: end;
+  margin-right: 0px;
+  background: #ff4d4d;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.logout-btn:hover {
+  background: #d93636;
+  transform: scale(1.1); /* efek membesar saat hover */
+}
+
+.logout-btn:active {
+  transform: scale(0.95); /* sedikit mengecil saat diklik */
+}
+
+    /* === Filter Bar === */
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      background: #fff;
+      padding: 15px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .filter-bar input {
+      padding: 8px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      width: 200px;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .filter-bar select {
+      padding: 8px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .action-buttons {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      gap: 15px;
+    }
+
+    .add-patient-btn,
+    .delete-patient-btn {
+      border: none;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .add-patient-btn:hover,
+    .delete-patient-btn:hover { transform: scale(1.1); }
+
+    .add-patient-btn {
+      background: #0072ff;
+    }
+    .add-patient-btn:hover { background: #005fd1; }
+    
+    #editPatientBtn {
+  background: #0072ff;
+}
+
+#editPatientBtn:hover {
+  background: #005fd1;
+}
+
+.delete-patient-btn {
+  background: #ff1500; /* biru seperti tombol tambah */
+  color: white;        /* teks/icon tetap putih */
+}
+
+.delete-patient-btn i {
+  color: white;        /* pastikan ikon tetap putih */
+}
+
+.delete-patient-btn:hover {
+  background: #b30000; /* warna lebih gelap saat hover */
+}
+
+    .delete-patient-btn svg,
+    .add-patient-btn svg {
+      width: 28px;
+      height: 28px;
+      fill: white;
+    }
+
+    /* === Grid Layout (Bukan Scroll Horizontal) === */
+   .patient-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 30px;            /* tambah jarak antar kartu */
+  padding: 20px 20px;   /* tambah ruang di sekitar grid */
+  justify-items: center;
+}
+
+
+
+    .patient-card {
+      position: relative;
+      width: 100%;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      padding: 10px;
+      cursor: pointer;
+      transition: transform 0.2s, opacity 0.5s ease;
+    }
+
+    .patient-card:hover { transform: scale(1.05); }
+    .patient-card.fade-out { opacity: 0; transform: scale(0.9); }
+
+    .patient-card img {
+      width: 100%;
+      border-radius: 8px;
+    }
+
+    .patient-card h3 {
+      margin: 10px 0 5px;
+      font-weight: 600;
+      font-size: 16px;
+      color: #222;
+    }
+
+    .patient-card p {
+      margin: 2px 0;
+      font-size: 13px;
+      color: #555;
+      font-weight: 400;
+    }
+
+    .select-checkbox {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      width: 18px;
+      height: 18px;
+      accent-color: #ff5252;
+      display: none;
+    }
+
+    .select-mode .select-checkbox {
+      display: block;
+    }
+
+    /* Modal Tambah */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      width: 300px;
+      font-size: 14px;
+    }
+
+    .modal-content h2 {
+      margin-top: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .modal-content label {
+      display: block;
+      margin: 8px 0 4px;
+      font-weight: 500;
+    }
+
+    .modal-content input,
+.modal-content select {
+  width: calc(100% - 2px);
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-family: 'Poppins', sans-serif;
+  display: block;
+  box-sizing: border-box;
+}
+
+    .modal-content button {
+      margin-top: 12px;
+      padding: 8px 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Poppins', sans-serif;
+      font-weight: 500;
+    }
+
+    .modal-content button[type="submit"] {
+      background: #0072ff;
+      color: white;
+    }
+
+    .modal-content button[type="button"] {
+      background: #ccc;
+      margin-left: 6px;
+    }
+
+    /* Popup Animasi */
+    #popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      padding: 30px 40px;
+      text-align: center;
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 9999;
+    }
+
+    #popup.show {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    #popup img {
+      width: 110px;
+      height: 80px;
+      margin-bottom: 1.2rem;
+    }
+
+    #popup p {
+      font-size: 1.1rem;
+      color: #333;
+      font-weight: 500;
+    }
+
+    #popup-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.4);
+      opacity: 0;
+      z-index: 9998;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    #popup-bg.show {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    #confirmDelete {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+      text-align: center;
+      z-index: 10000;
+    }
+
+    #confirmDelete button {
+      margin: 10px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    #confirmYes { background: #ff5252; color: white; }
+    #confirmNo { background: #ccc; }
+
+    @media (max-width: 600px) {
+      .patient-card { min-width: 160px; }
+      .modal-content { width: 90%; }
+      .patient-card p { font-size: 12px; }
+      .logout-btn { font-size: 12px; padding: 5px 10px; }
+      .filter-bar input { width: 100%; }
+    }
+
+    /* ===========================
+   RESPONSIVE (SMARTPHONE)
+=========================== */
+@media (max-width: 768px) {
+  /* === Header === */
+  header {
+    grid-template-columns: 1fr; /* header jadi 1 kolom */
+    text-align: center;
+    padding: 12px 10px;
+  }
+
+  .modal-content { width: 90%; max-width: 320px; }
+
+  .header-left {
+    justify-content: center;
+    margin: 0 auto;
+    flex-direction: column;
+  }
+
+  .header-left img {
+    width: 55px;
+  }
+
+  .header-text p {
+    font-size: 16px;
+  }
+
+  .header-center {
+    margin-top: 8px;
+  }
+
+  .header-center h1 {
+    font-size: 18px;
+  }
+
+  .logout-btn {
+    margin: 10px auto 5px auto;
+    padding: 8px 16px;
+    font-size: 14px;
+    transform: scale(1); /* tetap ukuran normal di hp */
+  }
+
+  /* === Filter Bar === */
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    text-align: center;
+  }
+
+  .filter-bar input, 
+  .filter-bar select {
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
+  }
+
+  /* === Grid Kartu Pasien === */
+  .patient-container {
+    display: grid;
+    grid-template-columns: (auto-fit, minmax(150px, 1fr)); /* tampilkan 2 kartu per baris */
+    gap: 15px;
+    padding: 15px;
+    justify-items: center;
+  }
+
+  .patient-card {
+    width: 100%;
+    max-width: 180px; /* supaya dua muat berdampingan */
+    padding: 8px;
+  }
+
+  .patient-card img {
+    height: 150px;
+  }
+
+  .patient-card h3 {
+    font-size: 14px;
+  }
+
+  .patient-card p {
+    font-size: 12px;
+  }
+}
+
+
+ .patient-card img {
+  width: 100%;
+  height: 180px; /* atur tinggi gambar */
+  object-fit: cover; /* biar gambar tetap proporsional, tidak gepeng */
+  border-radius: 8px;
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  padding: 15px 20px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #0072ff;
+  margin: 0;
+}
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left" onclick="refreshPage()" style="cursor: pointer;">
+    <img src="untad.png" alt="Logo Untad">
+    <div class="header-text">
+      <p>Program Studi Teknik Elektro</p>
+      <p>Fakultas Teknik</p>
+      <p>Universitas Tadulako</p>
+    </div>
+  </div>
+
+  <div class="header-center" onclick="refreshPage()" style="cursor: pointer;">
+    <h1>Monitoring Kesehatan<br>Teknik Elektro</h1>
+  </div>
+
+  <button class="logout-btn" onclick="logout()">Logout</button>
+</header>
+
+
+<!-- === Filter Bar === -->
+<div class="filter-bar">
+  <h2 class="section-title">Data Pasien</h2>
+  <input type="text" id="searchInput" placeholder="Cari nama pasien...">
+  <select id="sortSelect">
+    <option value="latest">Terbaru ke Lama</option>
+    <option value="az">A - Z</option>
+  </select>
+</div>
+
+<div class="patient-container" id="patientList"></div>
+
+<!-- Tombol Aksi -->
+<div class="action-buttons">
+  <button id="addPatientBtn" class="add-patient-btn" onclick="openAddForm()">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+      <path d="M19 11h-6V5h-2v6H5v2h6v6h2v-6h6z"/>
+    </svg>
+  </button>
+
+  <button id="editPatientBtn" class="delete-patient-btn" onclick="toggleEditMode()">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 
+      7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 
+      1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/>
+    </svg>
+  </button>
+
+  <button id="deletePatientBtn" class="delete-patient-btn" onclick="toggleDeleteMode()" style="display:none;">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+      <path d="M3 6h18v2H3V6zm2 3h14l-1.5 12.5c-.1.8-.8 1.5-1.6 
+      1.5H8.1c-.8 0-1.5-.7-1.6-1.5L5 9zm5-5h4v2h-4V4z"/>
+    </svg>
+  </button>
+</div>
+
+
+<!-- Modal Tambah Pasien -->
+<div id="addFormModal" class="modal">
+  <div class="modal-content">
+    <h2>Tambah Data Pasien</h2>
+    <form id="patientForm">
+      <label>Nama:</label>
+      <input type="text" id="nameInput" required>
+
+      <label>Umur:</label>
+      <input type="number" id="ageInput" required>
+
+      <label>Gender:</label>
+      <select id="genderInput" required>
+        <option value="Laki-laki">Laki-laki</option>
+        <option value="Perempuan">Perempuan</option>
+      </select>
+
+      <label>Alamat:</label>
+      <input type="text" id="addressInput" required>
+
+      <!-- otomatis isi tanggal hari ini -->
+      <input type="hidden" id="examDateInput">
+
+      <button type="submit">Simpan</button>
+      <button type="button" onclick="closeAddForm()">Batal</button>
+    </form>
+  </div>
+</div>
+
+
+<!-- Popup Animasi -->
+<div id="popup-bg"></div>
+<div id="popup">
+  <img id="popup-icon" src="" alt="Status Icon">
+  <p id="popup-message">Pesan</p>
+</div>
+
+<!-- Konfirmasi Hapus -->
+<div id="confirmDelete">
+  <p>Apakah kamu yakin ingin menghapus data yang dipilih?</p>
+  <button id="confirmYes">Hapus</button>
+  <button id="confirmNo">Tidak</button>
+</div>
+
+<script>
+  const SUPABASE_URL = "https://agyeeuaelqgyusbtnrgn.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFneWVldWFlbHFneXVzYnRucmduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgwMTUyMjMsImV4cCI6MjA3MzU5MTIyM30.HmXvR8koQpxYo1Mx-zWP3tlHxBPPo7RInFHjg8tAJtQ";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const userRole = localStorage.getItem("role") || "tamu";
+  if (userRole !== "admin") document.querySelector(".action-buttons").style.display = "none";
+
+  let deleteMode = false;
+  let patients = [];
+
+  function showPopup(success = true, message = "Berhasil!") {
+    const popup = document.getElementById("popup");
+    const popupBg = document.getElementById("popup-bg");
+    const icon = document.getElementById("popup-icon");
+    const msg = document.getElementById("popup-message");
+    icon.src = success ? "success.gif" : "failed.gif";
+    msg.textContent = message;
+    popup.classList.add("show");
+    popupBg.classList.add("show");
+    setTimeout(() => {
+      popup.classList.remove("show");
+      popupBg.classList.remove("show");
+    }, 1800);
+  }
+
+  // === Ambil data pasien + foto terbaru ===
+async function loadPatients() {
+  const sortOption = document.getElementById("sortSelect").value;
+
+  // Ambil semua data pasien + daftar foto
+  let { data, error } = await supabase
+    .from("patients")
+    .select(`
+      id,
+      name,
+      age,
+      gender,
+      address,
+      ddmmyy,
+      patient_photos(photo_url)
+    `);
+
+  if (error) {
+    console.error("Error loadPatients:", error);
+    showPopup(false, "Gagal memuat data!");
+    return;
+  }
+
+  // === Urutkan Data Sesuai Pilihan ===
+  if (sortOption === "az") {
+    // Urutkan berdasarkan nama A-Z
+    data.sort((a, b) => a.name.localeCompare(b.name));
+  } 
+  else if (sortOption === "latest") {
+    // Urutkan dari baru ke lama (ID besar dulu)
+    data.sort((a, b) => b.id - a.id);
+    // Tampilkan yang terbaru di kiri
+    data.reverse();
+  } 
+  else if (sortOption === "oldest") {
+    // Kalau nanti mau ditambah fitur lama ke baru
+    data.sort((a, b) => a.id - b.id);
+  }
+
+  patients = data;
+  renderPatients();
+
+}
+
+ function renderPatients() {
+  const container = document.getElementById("patientList");
+  const searchText = document.getElementById("searchInput").value.toLowerCase();
+  container.innerHTML = "";
+
+  patients
+    .filter(p => p.name.toLowerCase().includes(searchText))
+    .forEach(p => {
+      const card = document.createElement("div");
+      card.className = "patient-card";
+
+      // Event klik card (buka detail atau edit)
+      card.onclick = (e) => { 
+        if (deleteMode) return; // kalau mode hapus, jangan buka detail
+        if (editMode) {
+          const checkbox = card.querySelector(".select-checkbox");
+          checkbox.checked = true;
+          document.querySelectorAll(".select-checkbox").forEach(cb => {
+            if (cb !== checkbox) cb.checked = false;
+          });
+          selectedEditId = p.id;
+          openEditForm();
+          return;
+        }
+        window.location.href = `detail.html?id=${p.id}`;
+      };
+
+      // Ambil foto terbaru pasien
+      const photoUrl =
+        (p.patient_photos && p.patient_photos.length > 0)
+          ? p.patient_photos[p.patient_photos.length - 1].photo_url
+          : "https://via.placeholder.com/250x150?text=No+Photo";
+
+      // Isi kartu pasien
+      card.innerHTML = `
+        <input type="checkbox" class="select-checkbox" data-id="${p.id}">
+        <img src="${photoUrl}" alt="Foto Pasien">
+        <h3>${p.name}</h3>
+        <p>Umur: ${p.age} th</p>
+        <p>Gender: ${p.gender}</p>
+        <p>Tanggal: ${p.ddmmyy || '-'}</p>
+        <p>Alamat: ${p.address || '-'}</p>
+      `;
+
+      container.appendChild(card);
+    });
+}
+
+
+  document.getElementById("searchInput").addEventListener("input", renderPatients);
+  document.getElementById("sortSelect").addEventListener("change", loadPatients);
+
+  function toggleDeleteMode() {
+    const container = document.getElementById("patientList");
+    deleteMode = !deleteMode;
+    container.classList.toggle("select-mode", deleteMode);
+    if (!deleteMode) {
+      const selected = document.querySelectorAll(".select-checkbox:checked");
+      if (selected.length > 0) document.getElementById("confirmDelete").style.display = "block";
+    }
+  }
+
+  let editMode = false;
+let selectedEditId = null;
+
+// === Toggle Edit Mode ===
+function toggleEditMode() {
+  editMode = !editMode;
+  const deleteBtn = document.getElementById("deletePatientBtn");
+  deleteBtn.style.display = editMode ? "block" : "none";
+
+  // ubah warna tombol edit agar terlihat aktif
+  const editBtn = document.getElementById("editPatientBtn");
+  editBtn.style.background = editMode
+    ? "linear-gradient(135deg, #00c851, #007e33)"
+    : "linear-gradient(135deg, #0099ff, #005fd1)";
+
+  const cards = document.querySelectorAll(".patient-card");
+  cards.forEach(card => {
+    const checkbox = card.querySelector(".select-checkbox");
+    checkbox.style.display = editMode ? "block" : "none";
+  });
+
+  if (!editMode) {
+    selectedEditId = null;
+  }
+}
+
+// === Saat klik checkbox dalam mode edit ===
+document.addEventListener("change", function(e) {
+  if (editMode && e.target.classList.contains("select-checkbox")) {
+    const checkboxes = document.querySelectorAll(".select-checkbox");
+    checkboxes.forEach(cb => { if (cb !== e.target) cb.checked = false; }); // hanya 1 bisa dipilih
+    selectedEditId = e.target.dataset.id;
+  }
+});
+
+// === Fungsi Edit Pasien ===
+async function openEditForm() {
+  if (!selectedEditId) {
+    showPopup(false, "Pilih satu pasien untuk diubah!");
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("patients")
+    .select("*")
+    .eq("id", selectedEditId)
+    .single();
+
+  if (error) {
+    showPopup(false, "Gagal memuat data pasien!");
+    return;
+  }
+
+  document.getElementById("nameInput").value = data.name;
+  document.getElementById("ageInput").value = data.age;
+  document.getElementById("genderInput").value = data.gender;
+  document.getElementById("addressInput").value = data.address;
+
+  openAddForm();
+  document.querySelector("#addFormModal h2").innerText = "Edit Data Pasien";
+}
+
+// === Simpan (Tambah atau Edit) ===
+document.getElementById("patientForm").addEventListener("submit", async e => {
+  e.preventDefault();
+
+  const name = document.getElementById("nameInput").value.trim();
+  const age = parseInt(document.getElementById("ageInput").value);
+  const gender = document.getElementById("genderInput").value;
+  const address = document.getElementById("addressInput").value.trim();
+
+  // buat format waktu pemeriksaan dd-mm-yyyy
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, '0');
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const yyyy = now.getFullYear();
+  const examDate = `${dd}-${mm}-${yyyy}`;
+
+  if (editMode && selectedEditId) {
+    // === MODE EDIT: update data berdasarkan ID ===
+    const { error } = await supabase
+      .from("patients")
+      .update({ name, age, gender, address, ddmmyy: examDate })
+      .eq("id", selectedEditId);
+
+    if (error) {
+      showPopup(false, "Gagal mengubah data!");
+      return;
+    }
+
+    showPopup(true, "Data pasien berhasil diubah!");
+  } else {
+    // === MODE TAMBAH: insert data baru ===
+    const { data: insertedData, error: insertError } = await supabase
+      .from("patients")
+      .insert([{ name, age, gender, address, ddmmyy: examDate }])
+      .select("id");
+
+    if (insertError) {
+      showPopup(false, "Gagal menambahkan pasien!");
+      return;
+    }
+
+    const newPatientId = insertedData[0].id;
+
+    // === Update active_patient agar current_id = id pasien baru ===
+    const { error: activeError } = await supabase
+      .from("active_patient")
+      .update({ current_id: newPatientId })
+      .eq("id", 1);
+
+    if (activeError) {
+      console.error("Gagal update active_patient:", activeError.message);
+    } else {
+      console.log("Active patient diperbarui:", newPatientId);
+    }
+
+    showPopup(true, "Data pasien berhasil ditambahkan!");
+  }
+
+  // === Reset form & muat ulang ===
+  document.getElementById("patientForm").reset();
+  closeAddForm();
+  editMode = false;
+  selectedEditId = null;
+  document.getElementById("deletePatientBtn").style.display = "none";
+  loadPatients();
+});
+
+  document.getElementById("confirmYes").onclick = async () => {
+    const selected = Array.from(document.querySelectorAll(".select-checkbox:checked"));
+    const idsToDelete = selected.map(c => c.dataset.id);
+    if (idsToDelete.length === 0) return;
+
+    for (let c of selected) {
+      const card = c.closest(".patient-card");
+      card.classList.add("fade-out");
+      setTimeout(() => card.remove(), 500);
+    }
+
+    const { error } = await supabase.from("patients").delete().in("id", idsToDelete);
+    if (error) { showPopup(false, "Gagal menghapus data!"); return; }
+
+    showPopup(true, "Data berhasil dihapus!");
+    document.getElementById("confirmDelete").style.display = "none";
+    deleteMode = false;
+    setTimeout(loadPatients, 800);
+  };
+
+  document.getElementById("confirmNo").onclick = () => {
+    document.getElementById("confirmDelete").style.display = "none";
+    deleteMode = false;
+  };
+
+
+  function openAddForm() { addFormModal.style.display = "flex"; }
+  function closeAddForm() { addFormModal.style.display = "none"; }
+
+  function logout() {
+    localStorage.removeItem("role");
+    window.location.href = "index.html";
+  }
+
+  loadPatients();
+  
+  document.getElementById("editPatientBtn").addEventListener("dblclick", openEditForm);
+
+  // === Tekan ENTER untuk Simpan & Hapus ===
+document.addEventListener('keydown', function (e) {
+  // --- Enter di modal tambah pasien ---
+  const addFormModal = document.getElementById('addFormModal');
+  if (addFormModal && addFormModal.style.display === 'flex' && e.key === 'Enter') {
+    e.preventDefault(); // Hindari reload halaman
+    const form = document.getElementById('patientForm');
+    if (form) {
+      form.requestSubmit(); // Menjalankan submit() form
+    }
+  }
+
+  // --- Enter di konfirmasi hapus ---
+  const confirmDelete = document.getElementById('confirmDelete');
+  if (confirmDelete && confirmDelete.style.display === 'block' && e.key === 'Enter') {
+    e.preventDefault();
+    document.getElementById('confirmYes').click();
+  }
+});
+
+</script>
+</body>
+</html>
