@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login Admin / Tamu</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: url('img.jpg') no-repeat center center fixed;
+      background-size: cover;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+.login-box {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border-radius: 15px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  padding: 25px 40px 35px 40px; /* top-left-bottom-right */
+  width: 380px;
+  text-align: center;
+  color: white;
+}
+
+    .login-box h2 {
+      margin-bottom: 25px;
+      color: white;
+      font-size: 1.6em;
+    }
+
+    .input-group {
+      position: relative;
+      margin-bottom: 20px;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 12px 40px 12px 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .input-group .icon {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #555;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: background 0.3s ease;
+      font-size: 15px;
+    }
+
+    button:hover {
+      background-color: #218838;
+    }
+
+    #error {
+      color: #ff4d4d;
+      font-size: 0.9em;
+      margin-top: 8px;
+    }
+
+    /* === Teks Judul di Dalam Box === */
+.inside-text {
+  margin-bottom: 15px;
+}
+
+.inside-text h1 {
+  font-size: 1.2rem;        /* sedikit lebih kecil */
+  line-height: 1.3;
+  font-weight: 600;
+  color: white;
+  margin: 0 0 12px 0;     /* beri sedikit jarak di bawah teks */
+}
+
+/* === Logo === */
+.logo {
+  width: 90px;
+  margin: 5px 0 5px 0;  /* jarak atas bawah lebih sempit */
+}
+
+/* === Copyright === */
+.copyright {
+  font-size: 0.85rem;
+  color: white;
+  opacity: 0.9;
+  line-height: 1.3;
+  text-align: center; /* rata kanan */
+  margin-top: 10px;
+}
+
+    /* ======= Tambahan untuk tampilan baru ======= */
+.top-text {
+  text-align: center;
+  color: white;
+  margin-bottom: 20px;
+  padding: 10px 20px;
+}
+
+.top-text h1 {
+  font-size: 1.2rem;
+  line-height: 1.4;
+  font-weight: 600;
+  margin: 0;
+}
+
+
+    /* Responsif untuk layar kecil */
+    @media (max-width: 480px) {
+      body {
+        align-items: flex-start;
+        padding-top: 80px;
+        background-attachment: scroll;
+      }
+
+      .login-box {
+        width: 90%;
+        padding: 20px;
+      }
+
+      .login-box h2 {
+        font-size: 1.3em;
+      }
+
+      button {
+        font-size: 14px;
+      }
+      .top-text h1 {
+      font-size: 1rem;
+      }
+      .inside-text h1 {
+     font-size: 0.85rem; /* biar pas di layar kecil */
+     }
+     .logo {
+     width: 65px;
+     }
+     .copyright {
+      font-size: 0.75rem;
+     text-align: center; /* biar di HP rata tengah */
+     }
+    }
+
+  </style>
+</head>
+<body>
+<body>
+  <body>
+  <div class="login-box">
+    <div class="inside-text">
+      <h1>Sistem Deteksi Gejala Stroke<br>Pada Lansia Berbasis<br>Support Vector Machine</h1>
+    </div>
+    <img src="untad.png" alt="Logo Untad" class="logo">
+    <h2>Login Admin</h2>
+
+    <div class="input-group">
+      <input type="text" id="username" placeholder="Username" autocomplete="off" />
+      <i class="fas fa-user icon"></i>
+    </div>
+    <div class="input-group">
+      <input type="password" id="password" placeholder="Password" autocomplete="off" />
+      <i class="fas fa-lock icon"></i>
+    </div>
+    <button onclick="login()">Login sebagai Admin</button>
+    <p id="error"></p>
+    <button onclick="guestLogin()">Masuk sebagai Tamu</button>
+    <p class="copyright">© Catur prasetyo<br>Teknik Elektro<br>Universitas Tadulako 2025</p>
+    </div>
+
+  <script>
+    function login() {
+      const u = document.getElementById("username").value.trim();
+      const p = document.getElementById("password").value.trim();
+
+      if (u === "admin" && p === "admin123") {
+        localStorage.setItem("role", "admin");
+        window.location.href = "dashboard.html";
+      } else {
+        document.getElementById("error").innerText = "Username atau password salah.";
+      }
+    }
+
+    function guestLogin() {
+      localStorage.setItem("role", "guest");
+      window.location.href = "dashboard.html";
+    }
+
+    // === Tekan ENTER untuk login otomatis ===
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value.trim();
+
+        if (username && password) {
+          login();
+        } else if (!username) {
+          document.getElementById("username").focus();
+        } else if (!password) {
+          document.getElementById("password").focus();
+        }
+      }
+    });
+  </script>
+</body>
+</html>
